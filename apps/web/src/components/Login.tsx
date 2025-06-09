@@ -15,7 +15,7 @@ export default function Login({ onLogin }: LoginProps) {
     setError("");
 
     const endpoint = isRegistering ? "register" : "login";
-    const response = await fetch(`http://localhost:3001/${endpoint}`, {
+    const response = await fetch(`https://vertalune.com/api/${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),

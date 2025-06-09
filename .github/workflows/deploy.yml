@@ -1,0 +1,70 @@
+name: Deploy to alwaysdata
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔧 Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 🧹 Clean install root dependencies
+        run: npm ci
+
+      - name: 🧱 Build Frontend (Vite)
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run build
+
+      - name: 🏗️ Build Backend (TypeScript)
+        working-directory: apps/server
+        run: |
+          npm ci
+          npm run build
+
+      - name: 📦 Upload frontend build to alwaysdata
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AD_HOST }}
+          username: ${{ secrets.AD_USER }}
+          key: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+          source: apps/web/dist/*
+          target: ${{ secrets.AD_REMOTE_WEB_PATH }}
+
+      - name: 📦 Upload backend build to alwaysdata
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AD_HOST }}
+          username: ${{ secrets.AD_USER }}
+          key: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+          source: apps/server/dist/*
+          target: ${{ secrets.AD_REMOTE_SERVER_PATH }}
+
+      - name: 🚀 Start or Restart PM2 (backend)
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.AD_HOST }}
+          username: ${{ secrets.AD_USER }}
+          key: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+          script: |
+            cd ${{ secrets.AD_REMOTE_SERVER_PATH }}
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
+            if pm2 list | grep -q WordleTracker; then
+              pm2 reload WordleTracker
+            else
+              pm2 start index.js --name WordleTracker
+            fi

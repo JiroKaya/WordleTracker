@@ -11,7 +11,7 @@ export default function Leaderboard() {
   const [data, setData] = useState<LeaderRow[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:3001/leaderboard")
+    fetch("http://vertalune.com/api/leaderboard")
       .then((res) => res.json())
       .then((json) => setData(json));
   }, []);

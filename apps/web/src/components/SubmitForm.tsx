@@ -25,7 +25,7 @@ export default function SubmitForm({ userId, onSubmitted }: SubmitFormProps) {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:3001/submit", {
+      const response = await fetch("http://vertalune.com/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, raw }),

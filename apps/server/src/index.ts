@@ -10,9 +10,22 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://www.vertalune.com',
+  'https://www.vertalune.com',
+]
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(bodyParser.json());
@@ -51,8 +64,10 @@ function parseWordleShareText(raw: string): { game: number; score: string; grid:
   }
 }
 
+const api = express.Router();
+
 // 🔒 Register
-app.post('/register', async (req: Request, res: Response) => {
+api.post('/register', async (req: Request, res: Response) => {
   const { username, password } = req.body;
   if (!username || !password) {
     res.status(400).json({ message: 'Missing fields' });
@@ -79,7 +94,7 @@ app.post('/register', async (req: Request, res: Response) => {
 });
 
 // 🔑 Login
-app.post('/login', async (req: Request, res: Response) => {
+api.post('/login', async (req: Request, res: Response) => {
   const { username, password } = req.body;
   if (!username || !password) {
     res.status(400).json({ message: 'Missing fields' });
@@ -102,7 +117,7 @@ app.post('/login', async (req: Request, res: Response) => {
 });
 
 // 📝 Submit Result
-app.post('/submit', async (req: Request, res: Response) => {
+api.post('/submit', async (req: Request, res: Response) => {
   const { userId, raw } = req.body;
   if (!userId || !raw) {
     res.status(400).send('Missing fields');
@@ -136,7 +151,7 @@ app.post('/submit', async (req: Request, res: Response) => {
 });
 
 // 🏆 Leaderboard
-app.get('/leaderboard', async (_req: Request, res: Response) => {
+api.get('/leaderboard', async (_req: Request, res: Response) => {
   try {
     const result = await db.query(
       `SELECT users.username,
@@ -153,5 +168,7 @@ app.get('/leaderboard', async (_req: Request, res: Response) => {
     res.status(500).send('DB error');
   }
 });
+
+app.use('/api', api);
 
 app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
