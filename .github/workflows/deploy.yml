@@ -17,16 +17,47 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '22'
-          cache: 'npm'
 
-      - name: 🧹 Clean install root dependencies
+      # Root-level dependencies
+      - name: ♻️ Cache root node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-root-${{ hashFiles('package-lock.json') }}
+
+      - name: 🧹 Install root dependencies
         run: npm ci
+
+      # Frontend dependencies
+      - name: ♻️ Cache frontend node_modules
+        uses: actions/cache@v3
+        with:
+          path: apps/web/node_modules
+          key: ${{ runner.os }}-web-${{ hashFiles('apps/web/package-lock.json') }}
 
       - name: 🧱 Build Frontend (Vite)
         working-directory: apps/web
         run: |
           npm ci
           npm run build
+
+      # Backend dependencies
+      - name: ♻️ Cache backend node_modules
+        uses: actions/cache@v3
+        with:
+          path: apps/server/node_modules
+          key: ${{ runner.os }}-server-${{ hashFiles('apps/server/package-lock.json') }}
+
+      # Check folders exist before building
+      - name: 📂 Ensure remote deploy folders exist
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.AD_HOST }}
+          username: ${{ secrets.AD_USER }}
+          key: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+          script: |
+            mkdir -p ${{ secrets.AD_REMOTE_WEB_PATH }}
+            mkdir -p ${{ secrets.AD_REMOTE_SERVER_PATH }}
 
       - name: 🏗️ Build Backend (TypeScript)
         working-directory: apps/server
