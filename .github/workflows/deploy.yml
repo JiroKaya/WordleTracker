@@ -48,6 +48,12 @@ jobs:
           path: apps/server/node_modules
           key: ${{ runner.os }}-server-${{ hashFiles('apps/server/package-lock.json') }}
 
+      - name: Debug Secrets (temporary)
+        run: |
+          echo "SSH key exists: ${{ secrets.ALWAYSDATA_SSH_KEY != '' }}"
+          echo "Host: ${{ secrets.AD_HOST }}"
+          echo "User: ${{ secrets.AD_USER }}"
+
       # Check folders exist before building
       - name: 📂 Ensure remote deploy folders exist
         uses: appleboy/ssh-action@v0.1.7
