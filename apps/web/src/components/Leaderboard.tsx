@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface LeaderRow {
   username: string;
@@ -11,9 +11,12 @@ export default function Leaderboard() {
   const [data, setData] = useState<LeaderRow[]>([]);
 
   useEffect(() => {
-    fetch("http://vertalune.com/api/leaderboard")
+    fetch("/api/leaderboard")
       .then((res) => res.json())
-      .then((json) => setData(json));
+      .then((json) => setData(json as LeaderRow[]))
+      .catch((err) => {
+        console.error("Failed to fetch leaderboard data:", err);
+      });
   }, []);
 
   return (

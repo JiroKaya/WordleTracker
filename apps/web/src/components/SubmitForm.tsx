@@ -25,7 +25,7 @@ export default function SubmitForm({ userId, onSubmitted }: SubmitFormProps) {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://vertalune.com/api/submit", {
+      const response = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, raw }),
@@ -58,7 +58,9 @@ export default function SubmitForm({ userId, onSubmitted }: SubmitFormProps) {
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
       className="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm"
     >
       <h2 className="text-xl font-medium mb-4">Paste Wordle Share</h2>

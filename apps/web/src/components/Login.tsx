@@ -15,13 +15,17 @@ export default function Login({ onLogin }: LoginProps) {
     setError("");
 
     const endpoint = isRegistering ? "register" : "login";
-    const response = await fetch(`https://vertalune.com/api/${endpoint}`, {
+    const response = await fetch(`/api/${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      userId: string;
+      username: string;
+      message: string;
+    };
 
     if (response.ok) {
       localStorage.setItem("userId", data.userId);
@@ -34,7 +38,9 @@ export default function Login({ onLogin }: LoginProps) {
 
   return (
     <form
-      onSubmit={handleAuth}
+      onSubmit={(e) => {
+        void handleAuth(e);
+      }}
       className="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm max-w-md mx-auto"
     >
       <h2 className="text-xl font-medium mb-4">
