@@ -1,5 +1,4 @@
 import SubmitForm from "../components/SubmitForm";
-import React from "react";
 
 interface SubmitPageProps {
   userId: string;
