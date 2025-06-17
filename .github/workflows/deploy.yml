@@ -39,7 +39,7 @@ jobs:
       - name: 🧱 Build Frontend (Vite)
         working-directory: apps/web
         run: |
-          npm ci
+          npm install
           npm run build
 
       # Backend dependencies
@@ -69,26 +69,28 @@ jobs:
       - name: 🏗️ Build Backend (TypeScript)
         working-directory: apps/server
         run: |
-          npm ci
+          npm install
           npm run build
 
-      - name: 📦 Upload frontend build to alwaysdata
+      - name: 📦 Upload full frontend project to alwaysdata
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.AD_HOST }}
           username: ${{ secrets.AD_USER }}
           key: ${{ secrets.ALWAYSDATA_SSH_KEY }}
-          source: apps/web/dist/*
+          source: apps/web/*
           target: ${{ secrets.AD_REMOTE_WEB_PATH }}
+          strip_components: 2  # Optional: avoids nesting apps/web/web
 
-      - name: 📦 Upload backend build to alwaysdata
+      - name: 📦 Upload full backend project to alwaysdata
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.AD_HOST }}
           username: ${{ secrets.AD_USER }}
           key: ${{ secrets.ALWAYSDATA_SSH_KEY }}
-          source: apps/server/dist/*
+          source: apps/server/*
           target: ${{ secrets.AD_REMOTE_SERVER_PATH }}
+          strip_components: 2  # Optional: avoids nesting apps/server/server
 
       - name: 🚀 Start or Restart PM2 (backend)
         uses: appleboy/ssh-action@v0.1.7
