@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "concurrently -k -n WEB,API -c green,cyan \"npm run dev --workspace apps/web\" \"npm run dev --workspace apps/server\"",
+    "dev:wordle": "npm run daily-wordle --workspace apps/server",
     "lint": "eslint \"apps/server/**/*.ts\" \"apps/web/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"apps/server/**/*.ts\" \"apps/web/**/*.{ts,tsx}\" --fix"
   },

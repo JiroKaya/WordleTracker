@@ -112,6 +112,7 @@ export default defineConfig([
       require: "readonly",
       process: "readonly",
       console: "readonly",
+      fetch: "readonly",
     },
   },
   rules: {

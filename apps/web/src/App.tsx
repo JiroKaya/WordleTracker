@@ -11,6 +11,7 @@ import SubmitPage from "./pages/SubmitPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import StatsPage from "./pages/StatsPage";
 import ProfilePage from "./pages/ProfilePage";
+import GamePage from "./pages/GamePage";
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(
@@ -72,6 +73,7 @@ export default function App() {
 
             {isLoggedIn ? (
               <>
+                <Route path="/game" element={<GamePage />} />
                 <Route
                   path="/submit"
                   element={

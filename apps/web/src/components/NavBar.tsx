@@ -39,6 +39,7 @@ export default function NavBar({
     { to: "/leaderboard", label: "Leaderboard" },
     { to: "/stats", label: "Stats" },
     { to: "/profile", label: "Profile" },
+    { to: "/game", label: "Game" },
   ];
 
   return (
