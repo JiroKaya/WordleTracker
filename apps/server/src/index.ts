@@ -408,6 +408,107 @@ api.get("/guesses", async (req: Request, res: Response) => {
   }
 });
 
+api.get("/stats", async (req: Request, res: Response) => {
+  let userId = req.query.userId;
+  if (Array.isArray(userId)) {
+    userId = userId[0];
+  }
+  userId = typeof userId === "string" ? userId : "";
+
+  if (!userId) {
+    res.status(400).json({ message: "Missing userId" });
+    return;
+  }
+
+  try {
+    const [[summary], streakSummary, guessRows, recentOutcomes] =
+      await Promise.all([
+        db
+          .query<{
+            games_played: number;
+            wins: number;
+            avg_guesses: number;
+          }>(
+            `
+        SELECT
+          COUNT(*) AS games_played,
+          SUM(won::int) AS wins,
+          ROUND(AVG(guesses_used)::numeric, 2) AS avg_guesses
+        FROM v_game_outcomes
+        WHERE userid = $1
+        `,
+            [userId],
+          )
+          .then((r) => r.rows),
+
+        db
+          .query<{
+            current_streak: number | null;
+            max_streak: number | null;
+          }>("SELECT * FROM v_streak_summary WHERE userid = $1", [userId])
+          .then((r) => r.rows),
+
+        db
+          .query<{
+            guesses_used: number;
+            games: number;
+          }>("SELECT * FROM v_guess_distribution WHERE userid = $1", [userId])
+          .then((r) => r.rows),
+
+        db
+          .query<{
+            date: string;
+            status: string;
+          }>(
+            `SELECT date, status FROM v_daily_user_outcomes WHERE userid = $1 AND date >= CURRENT_DATE - INTERVAL '30 days' ORDER BY date ASC`,
+            [userId],
+          )
+          .then((r) => r.rows),
+      ]);
+
+    // Explicitly convert summary fields to numbers
+    const games_played = Number(summary?.games_played ?? 0);
+    const wins = Number(summary?.wins ?? 0);
+    const avg_guesses = Number(summary?.avg_guesses ?? 0);
+
+    // Explicitly convert streaks to numbers
+    const current_streak = Number(streakSummary?.[0]?.current_streak ?? 0);
+    const max_streak = Number(streakSummary?.[0]?.max_streak ?? 0);
+
+    // Convert guess distribution values to numbers
+    const guessDistribution: Record<string, number> = {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      X: 0,
+    };
+    guessRows.forEach((g) => {
+      guessDistribution[g.guesses_used > 6 ? "X" : String(g.guesses_used)] =
+        Number(g.games);
+    });
+
+    res.json({
+      games_played,
+      wins,
+      avg_guesses,
+      win_pct: games_played
+        ? Number(((wins / games_played) * 100).toFixed(1))
+        : 0,
+      current_streak,
+      max_streak,
+      guess_distribution: guessDistribution,
+      recent_outcomes: recentOutcomes,
+    });
+  } catch (err: unknown) {
+    console.error("Load guesses error:", err);
+    res.status(500).json({ message: "Server error—please try again later." });
+    return;
+  }
+});
+
 app.use("/api", api);
 
 app.get(/^\/(?!api).*/, (req, res) => {
