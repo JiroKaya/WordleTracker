@@ -217,6 +217,197 @@ api.get("/leaderboard", async (_req: Request, res: Response) => {
   }
 });
 
+// 🎯 Guess evaluation + persistence
+api.post("/guess", async (req: Request, res: Response) => {
+  const { userId, guess } = req.body as {
+    userId?: string;
+    guess?: string;
+  };
+
+  // 1) Validate
+  if (
+    !userId ||
+    !guess ||
+    typeof guess !== "string" ||
+    guess.length !== 5 ||
+    !/^[a-zA-Z]+$/.test(guess)
+  ) {
+    res
+      .status(400)
+      .json({ message: "Must include userId and a 5-letter guess." });
+    return;
+  }
+  const guessArr = guess.toLowerCase().split("");
+
+  try {
+    // 2) Load today's word + date
+    const { rows } = await db.query<{
+      solution: string;
+      date: string;
+    }>(`
+      SELECT solution, date
+        FROM daily_words
+       ORDER BY date DESC
+       LIMIT 1
+    `);
+
+    if (!rows[0]) {
+      res.status(500).json({ message: "Could not find today's word." });
+      return;
+    }
+
+    const { solution: answer, date: gameDate } = rows[0];
+    const answerArr = answer.toLowerCase().split("");
+
+    // 3) First pass: mark greens
+    const result = Array(5).fill("absent") as (
+      | "correct"
+      | "present"
+      | "absent"
+    )[];
+    for (let i = 0; i < 5; i++) {
+      if (guessArr[i] === answerArr[i]) {
+        result[i] = "correct";
+        answerArr[i] = ""; // remove
+      }
+    }
+
+    // 4) Count remaining letters for yellows
+    const letterCounts: Record<string, number> = {};
+    answerArr.forEach((ch) => {
+      if (ch) letterCounts[ch] = (letterCounts[ch] || 0) + 1;
+    });
+
+    // 5) Second pass: mark presents
+    for (let i = 0; i < 5; i++) {
+      if (result[i] !== "correct") {
+        const ch = guessArr[i];
+        if (letterCounts[ch]) {
+          result[i] = "present";
+          letterCounts[ch]--;
+        }
+      }
+    }
+
+    // 6) Build emoji string
+    const emojiMap = {
+      correct: "🟩",
+      present: "🟨",
+      absent: "⬜",
+    } as const;
+    const emoji = result.map((s) => emojiMap[s]).join("");
+
+    // 7) Figure out this guess's number for the user
+    const countRes = await db.query<{ count: string }>(
+      `
+      SELECT COUNT(*) AS count
+        FROM guesses
+       WHERE user_id = $1
+         AND game_date = $2
+    `,
+      [userId, gameDate],
+    );
+    const guessNumber = parseInt(countRes.rows[0].count, 10) + 1;
+
+    // 8) Persist it
+    await db.query(
+      `
+      INSERT INTO guesses
+        (user_id, game_date, guess_number, guess, pattern, emoji)
+      VALUES
+        ($1,        $2,        $3,           $4,    $5,      $6)
+    `,
+      [
+        userId,
+        gameDate,
+        guessNumber,
+        guess.toLowerCase(),
+        JSON.stringify(result),
+        emoji,
+      ],
+    );
+
+    // 9) Respond
+    res.json({
+      guessNumber,
+      guess,
+      pattern: result,
+      emoji,
+      isCorrect: result.every((s) => s === "correct"),
+    });
+    return;
+  } catch (err: unknown) {
+    console.error("Guess error:", err);
+    res.status(500).json({ message: "Server error—please try again later." });
+    return;
+  }
+});
+
+// 📥 Load saved guesses for today
+api.get("/guesses", async (req: Request, res: Response) => {
+  let userId = req.query.userId;
+  if (Array.isArray(userId)) {
+    userId = userId[0];
+  }
+  userId = typeof userId === "string" ? userId : "";
+
+  if (!userId) {
+    res.status(400).json({ message: "Missing userId" });
+    return;
+  }
+
+  try {
+    // 1) Find today’s game_date
+    const dayRes = await db.query<{ date: string }>(
+      `
+      SELECT date
+        FROM daily_words
+       ORDER BY date DESC
+       LIMIT 1
+    `,
+    );
+    if (!dayRes.rows[0]) {
+      res.status(500).json({ message: "Could not find today's word date." });
+      return;
+    }
+    const gameDate = dayRes.rows[0].date;
+
+    // 2) Fetch all guesses
+    const guessRows = await db.query<{
+      guess_number: number;
+      guess: string;
+      pattern: string;
+      emoji: string;
+      created_at: string;
+    }>(
+      `
+      SELECT guess_number, guess, pattern, emoji, created_at
+        FROM guesses
+       WHERE user_id    = $1
+         AND game_date  = $2
+       ORDER BY guess_number
+    `,
+      [userId, gameDate],
+    );
+
+    // 3) Parse JSON patterns
+    const guesses = guessRows.rows.map((r) => ({
+      guessNumber: r.guess_number,
+      guess: r.guess,
+      pattern: JSON.parse(r.pattern) as ("correct" | "present" | "absent")[],
+      emoji: r.emoji,
+      timestamp: r.created_at,
+    }));
+
+    res.json({ gameDate, guesses });
+    return;
+  } catch (err: unknown) {
+    console.error("Load guesses error:", err);
+    res.status(500).json({ message: "Server error—please try again later." });
+    return;
+  }
+});
+
 app.use("/api", api);
 
 app.get(/^\/(?!api).*/, (req, res) => {

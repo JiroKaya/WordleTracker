@@ -46,9 +46,9 @@ export default function NavBar({
     <nav className="bg-white dark:bg-neutral-800 shadow">
       <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Left: Logo and Title */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <img src={logo} alt="Logo" className="w-10 h-auto" />
-          <h1 className="text-2xl font-semibold">Wordle Tracker</h1>
+          <h1 className="text-xl font-semibold">Wordle Tracker</h1>
         </div>
 
         {/* Mobile menu button */}
