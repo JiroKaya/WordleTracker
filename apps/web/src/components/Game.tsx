@@ -3,7 +3,7 @@ import {
   useState,
   useRef,
   type FormEvent,
-  type MutableRefObject,
+  type RefObject,
 } from "react";
 
 type LetterStatus = "correct" | "present" | "absent";
@@ -185,7 +185,7 @@ export default function WordleGame() {
               className="flex gap-2"
             >
               <input
-                ref={inputRef as MutableRefObject<HTMLInputElement>}
+                ref={inputRef as RefObject<HTMLInputElement>}
                 type="text"
                 aria-label="Enter your guess"
                 value={currentGuess}

@@ -134,6 +134,8 @@ export default defineConfig([
       localStorage: "readonly",
       console: "readonly",
       fetch: "readonly",
+      setTimeout: "readonly",
+      clearTimeout: "readonly",
     },
   },
   settings: { react: { version: "detect" } },

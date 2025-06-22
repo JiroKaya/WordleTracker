@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import GuessHistogram from "./GuessHistogram";
 import ScoreCard from "./ScoreCard";
+import StreakCalendar from "./StreakCalendar";
 
 type HeatmapDay = {
-  date: string;
-  status: "win" | "fail" | "miss";
+  played_on: string;
+  won: boolean;
 };
 
 type UserStats = {
@@ -48,7 +48,7 @@ export default function Stats({ userId }: { userId: string }) {
         maxStreak={data.max_streak}
       />
 
-      <GuessHistogram data={data.guess_distribution} />
+      <StreakCalendar plays={data.recent_outcomes} />
     </section>
   );
 }

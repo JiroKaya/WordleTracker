@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
-import { NavLink } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
-import logo from "../assets/wordle_tracker.webp"; // Adjust the path as necessary
+import React, { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { ChevronDown, Menu, X } from "lucide-react";
+import logo from "../assets/wordle_tracker.webp";
 
 interface NavBarProps {
   darkMode: boolean;
@@ -10,29 +10,15 @@ interface NavBarProps {
   username: string | null;
 }
 
-export default function NavBar({
+const NavBar: React.FC<NavBarProps> = ({
   darkMode,
   setDarkMode,
   onLogout,
   username,
-}: NavBarProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        menuOpen &&
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+}) => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const links = [
     { to: "/submit", label: "Submit" },
@@ -42,110 +28,64 @@ export default function NavBar({
     { to: "/game", label: "Game" },
   ];
 
+  const handleNavClick = (to: string) => {
+    void navigate(to);
+    setMobileOpen(false);
+  };
+
   return (
-    <nav className="bg-white dark:bg-neutral-800 shadow">
-      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-        {/* Left: Logo and Title */}
+    <header className="bg-white dark:bg-neutral-900 shadow">
+      <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        {/* Logo */}
         <div className="flex items-center space-x-3">
           <img src={logo} alt="Logo" className="w-10 h-auto" />
-          <h1 className="text-xl font-semibold">Wordle Tracker</h1>
+          <span className="text-lg font-semibold text-gray-800 dark:text-white">
+            Wordle Tracker
+          </span>
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setMenuOpen((prev) => !prev)}
-          className="md:hidden focus:outline-none"
-          aria-label="Toggle Menu"
-        >
-          <svg
-            className="w-6 h-6 text-gray-700 dark:text-gray-200"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {menuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            )}
-          </svg>
-        </button>
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex space-x-6 items-center">
+          {links.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `text-sm font-medium ${
+                  isActive
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-gray-700 dark:text-gray-300 hover:text-blue-500"
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
 
-        {/* Right: Nav + Actions (desktop) */}
-        <div className="hidden md:flex items-center space-x-6">
-          <ul className="flex space-x-6">
-            {links.map(({ to, label }) => (
-              <li key={to}>
-                <NavLink
-                  to={to}
-                  className={({ isActive }) =>
-                    `px-3 py-2 text-gray-600 dark:text-gray-300 transition-colors duration-200 cursor-pointer ${
-                      isActive
-                        ? "font-bold"
-                        : "hover:underline hover:decoration-current hover:decoration-2"
-                    }`
-                  }
-                >
-                  {label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-
-          {/* Theme toggle */}
+          {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode((prev) => !prev)}
-            aria-label="Toggle Dark Mode"
-            className="flex items-center space-x-2 focus:outline-none"
+            className="ml-4 text-xl"
+            aria-label="Toggle Theme"
           >
-            <span className="relative w-12 h-6 bg-gray-300 dark:bg-gray-600 rounded-full p-1 transition-colors duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              <span
-                className={`block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${
-                  darkMode ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </span>
-            <span className="text-sm text-gray-600 dark:text-gray-300 select-none">
-              {darkMode ? "🌙" : "☀"}
-            </span>
+            {darkMode ? "🌙" : "☀️"}
           </button>
 
-          {/* User dropdown */}
+          {/* User Menu */}
           {username && (
-            <div className="relative" ref={menuRef}>
+            <div className="relative">
               <button
-                onClick={() => setMenuOpen((o) => !o)}
-                className="flex items-center space-x-1 focus:outline-none"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                className="flex items-center gap-1 text-sm text-gray-800 dark:text-gray-200"
               >
-                <span className="text-sm text-gray-700 dark:text-gray-200">
-                  {username}
-                </span>
-                <ChevronDown
-                  className="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
-                  style={{
-                    transform: menuOpen ? "rotate(180deg)" : "rotate(0)",
-                  }}
-                />
+                {username}
+                <ChevronDown className="w-4 h-4" />
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-neutral-700 rounded-lg shadow-lg z-10">
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 bg-white dark:bg-neutral-800 border dark:border-neutral-600 rounded shadow-lg py-1">
                   <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onLogout();
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg"
+                    onClick={onLogout}
+                    className="block w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
                   >
                     Logout
                   </button>
@@ -153,63 +93,59 @@ export default function NavBar({
               )}
             </div>
           )}
-        </div>
+        </nav>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          onClick={() => setMobileOpen((prev) => !prev)}
+          className="md:hidden text-gray-800 dark:text-gray-200"
+          aria-label="Toggle Mobile Menu"
+        >
+          {mobileOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Menu className="w-6 h-6" />
+          )}
+        </button>
       </div>
 
-      {/* Mobile Dropdown Menu */}
-      {menuOpen && (
-        <div className="md:hidden px-6 pb-4 space-y-4">
-          <ul className="space-y-2">
-            {links.map(({ to, label }) => (
-              <li key={to}>
-                <NavLink
-                  to={to}
-                  onClick={() => setMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `block px-3 py-2 text-gray-600 dark:text-gray-300 transition-colors duration-200 ${
-                      isActive
-                        ? "font-bold"
-                        : "hover:underline hover:decoration-current hover:decoration-2"
-                    }`
-                  }
-                >
-                  {label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+      {/* Mobile Dropdown */}
+      {mobileOpen && (
+        <div className="md:hidden px-4 pb-4 space-y-2">
+          {links.map(({ to, label }) => (
+            <button
+              key={to}
+              onClick={() => handleNavClick(to)}
+              className="block w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded"
+            >
+              {label}
+            </button>
+          ))}
 
-          {/* Theme toggle */}
+          {/* Dark Mode */}
           <button
             onClick={() => setDarkMode((prev) => !prev)}
-            className="flex items-center space-x-2 px-3 focus:outline-none"
+            className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded"
           >
-            <span className="relative w-12 h-6 bg-gray-300 dark:bg-gray-600 rounded-full p-1">
-              <span
-                className={`block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${
-                  darkMode ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </span>
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              {darkMode ? "🌙" : "☀"}
-            </span>
+            {darkMode ? "🌙 Dark Mode" : "☀️ Light Mode"}
           </button>
 
-          {/* Logout (mobile view) */}
+          {/* Logout */}
           {username && (
             <button
               onClick={() => {
-                setMenuOpen(false);
+                setMobileOpen(false);
                 onLogout();
               }}
-              className="block w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg"
+              className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded"
             >
               Logout
             </button>
           )}
         </div>
       )}
-    </nav>
+    </header>
   );
-}
+};
+
+export default NavBar;

@@ -8,7 +8,6 @@ type Props = {
 };
 
 export default function ScoreCard(props: Props) {
-  console.log("Rendering ScoreCard with props:", props);
   return (
     <div className="grid grid-cols-3 gap-4 text-center bg-gray-900 text-white p-4 rounded-lg shadow">
       <Stat label="Played" value={props.gamesPlayed} />

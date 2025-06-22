@@ -87,7 +87,7 @@ export default function App() {
                 <Route path="/stats" element={<StatsPage userId={userId!} />} />
                 <Route
                   path="/profile"
-                  element={<ProfilePage username={username!} />}
+                  element={<ProfilePage userId={userId!} />}
                 />
                 <Route path="/" element={<Navigate to="/submit" replace />} />
               </>

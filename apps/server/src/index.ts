@@ -6,8 +6,17 @@ import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import { Pool } from "pg";
 import path from "path";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -460,7 +469,7 @@ api.get("/stats", async (req: Request, res: Response) => {
             date: string;
             status: string;
           }>(
-            `SELECT date, status FROM v_daily_user_outcomes WHERE userid = $1 AND date >= CURRENT_DATE - INTERVAL '30 days' ORDER BY date ASC`,
+            `SELECT played_on, won FROM v_streaks WHERE userid = $1 ORDER BY played_on ASC`,
             [userId],
           )
           .then((r) => r.rows),
@@ -508,6 +517,180 @@ api.get("/stats", async (req: Request, res: Response) => {
     return;
   }
 });
+
+api.get("/user/:id", async (req, res) => {
+  const { id } = req.params;
+  const result = await db.query(
+    `SELECT id, username, profile_picture FROM users WHERE id = $1`,
+    [id],
+  );
+  res.json(result.rows[0]);
+});
+
+api.put("/user/:id", async (req, res) => {
+  const { id } = req.params;
+  const { username, password } = req.body as {
+    username?: string;
+    password?: string;
+  };
+
+  const updates = [];
+  const values: string[] = [];
+  let i = 1;
+
+  if (username) {
+    updates.push(`username = $${i++}`);
+    values.push(username);
+  }
+  if (password) {
+    updates.push(`password = $${i++}`);
+    values.push(bcrypt.hashSync(password, 10));
+  }
+  values.push(id);
+
+  if (updates.length === 0) {
+    res.status(400).json({ message: "Nothing to update" });
+    return;
+  }
+
+  await db.query(
+    `UPDATE users SET ${updates.join(", ")} WHERE id = $${i}`,
+    values,
+  );
+
+  res.sendStatus(204);
+});
+
+api.post("/friends/request", async (req, res) => {
+  const { userId, targetUsername } = req.body as {
+    userId?: string;
+    targetUsername?: string;
+  };
+  const friend = await db.query<{ id: string }>(
+    "SELECT id FROM users WHERE username = $1",
+    [targetUsername],
+  );
+
+  if (friend.rows.length === 0) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  const friendId = friend.rows[0].id;
+
+  await db.query(
+    `INSERT INTO friendships (user_id, friend_id, status)
+     VALUES ($1, $2, 'pending')
+     ON CONFLICT DO NOTHING`,
+    [userId, friendId],
+  );
+
+  res.sendStatus(204);
+});
+
+api.get("/friends/requests/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const result = await db.query(
+    `SELECT f.user_id, u.username
+     FROM friendships f
+     JOIN users u ON f.user_id = u.id
+     WHERE f.friend_id = $1 AND f.status = 'pending'`,
+    [userId],
+  );
+  res.json(result.rows);
+});
+
+api.post("/friends/respond", async (req, res) => {
+  const { userId, senderId, action } = req.body as {
+    userId?: string;
+    senderId?: string;
+    action?: "accept" | "decline";
+  };
+
+  if (action === "accept") {
+    await db.query(
+      `UPDATE friendships SET status = 'accepted'
+       WHERE user_id = $1 AND friend_id = $2`,
+      [senderId, userId],
+    );
+  } else if (action === "decline") {
+    await db.query(
+      `DELETE FROM friendships
+       WHERE user_id = $1 AND friend_id = $2`,
+      [senderId, userId],
+    );
+  }
+
+  res.sendStatus(204);
+});
+
+api.get("/users/search", async (req, res) => {
+  const query = req.query.q;
+  if (!query || typeof query !== "string") {
+    res.status(400).json({ message: "Missing query" });
+    return;
+  }
+
+  const result = await db.query(
+    `SELECT id, username FROM users WHERE username ILIKE $1 LIMIT 5`,
+    [`${query}%`],
+  );
+
+  res.json(result.rows);
+});
+
+// Set up Multer (in-memory)
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Upload endpoint
+api.post(
+  "/upload-profile-picture",
+  upload.single("image"),
+  async (req, res) => {
+    const { userId } = req.body as { userId?: string };
+
+    if (!req.file || !userId) {
+      res.status(400).json({ message: "Missing file or userId" });
+      return;
+    }
+
+    try {
+      const streamUpload = () =>
+        new Promise<{ url: string }>((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "wordle-profile-pics" },
+            (error, result) => {
+              if (result?.secure_url) resolve({ url: result.secure_url });
+              else
+                reject(
+                  error instanceof Error
+                    ? error
+                    : new Error(
+                        typeof error === "string"
+                          ? error
+                          : JSON.stringify(error),
+                      ),
+                );
+            },
+          );
+          streamifier.createReadStream(req.file!.buffer).pipe(stream);
+        });
+
+      const { url } = await streamUpload();
+
+      // Save to DB
+      await db.query(`UPDATE users SET profile_picture = $1 WHERE id = $2`, [
+        url,
+        userId,
+      ]);
+
+      res.json({ imageUrl: url });
+    } catch (err) {
+      console.error("Cloudinary upload error:", err);
+      res.status(500).json({ message: "Upload failed" });
+    }
+  },
+);
 
 app.use("/api", api);
 

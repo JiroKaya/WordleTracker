@@ -1,14 +1,14 @@
+import Profile from "../components/Profile";
+
 interface ProfilePageProps {
-  username: string;
+  userId: string;
 }
 
-export default function ProfilePage({ username }: ProfilePageProps) {
+export default function ProfilePage({ userId }: ProfilePageProps) {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Your Profile</h1>
-      <p>
-        Logged in as <strong>{username}</strong>
-      </p>
+      <Profile userId={userId} />
     </div>
   );
 }
