@@ -36,7 +36,7 @@ const StreakCalendar: React.FC<Props> = ({
   const playMap = useMemo(() => {
     const m = new Map<string, boolean>();
     plays.forEach(({ played_on, won }) => {
-      const parsed = addDays(parseISO(played_on), 1); // safely parses full datetime
+      const parsed = parseISO(played_on); // safely parses full datetime
       const key = format(parsed, "yyyy-MM-dd"); // formats to local date string
       m.set(key, won);
     });
